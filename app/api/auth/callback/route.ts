@@ -167,7 +167,13 @@ export async function GET(request: NextRequest) {
         await createSession(upsertedUser.id);
 
         // Step 6: Redirect to dashboard
-        return NextResponse.redirect(new URL("/dashboard", request.url));
+        const redirectTo = cookieStore.get("startgg_oauth_redirect")?.value ?? "/dashboard";
+        cookieStore.delete("startgg_oauth_redirect");
+
+        // Validate that redirectTo is a relative path to prevent open redirect attacks
+        const safeRedirect = redirectTo.startsWith("/") ? redirectTo : "/dashboard";
+
+        return NextResponse.redirect(new URL(safeRedirect, request.url));
     } catch (error) {
         if (error instanceof OAuth2RequestError) {
             return NextResponse.json(
