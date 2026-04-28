@@ -17,6 +17,8 @@ Documento de hallazgos empíricos de la fase de exploración de la API de start.
 - La **character data tiene coverage variable**: ~100% en sets de top cut / stream, significativamente menor en pools tempranos. Estimación global razonable: 50-70%.
 - La **ingesta completa de un evento masivo (ej. Genesis X3, ~1,600 sets) supera el presupuesto razonable**. La estrategia correcta es la ingesta on-demand por usuario (filtrada con `entrantIds`), no ingesta masiva por torneo.
 - Tres queries cubren el 90% del producto: `UserRecentStandings`, `PlayerSetsInEvent`, y `GetUserBySlug`.
+- Los tokens de acceso de start.gg expiran después de 8 días (no en 1 hora).
+- **Estrategia**: refrescado bajo demanda cuando el token esté a punto de expirar, no constantemente (preemptively).
 
 ---
 

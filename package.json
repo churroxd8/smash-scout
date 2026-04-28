@@ -14,6 +14,7 @@
     "db:seed:characters": "dotenv -e .env.local -- tsx db/seeds/seed-characters.ts"
   },
   "dependencies": {
+    "arctic": "^3.7.0",
     "drizzle-orm": "^0.45.2",
     "next": "16.2.4",
     "postgres": "^3.4.9",
