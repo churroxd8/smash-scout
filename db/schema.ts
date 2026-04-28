@@ -260,3 +260,29 @@ export const ingestionJobs = pgTable(
         index("ingestion_jobs_status_idx").on(table.status),
     ],
 );
+
+/**
+ * sessions - server-side session storage
+ * 
+ * The cookie sent to the client contains a random token. We store a SHA-256 hash
+ * of that token as the row id. To validate a session, we hash the
+ * incoming token and look it up. The plaintext token never touches de DB.
+ * 
+ * This pattern enables session revocation, multi-device session listing,
+ * and forced logout across devices.
+ */
+export const sessions = pgTable(
+    "sessions",
+    {
+        id: text("id").primaryKey(), //SHA-256 hash of the session token (hex)
+        userId: uuid("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "cascade" }),
+        expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (table) => [
+        index("sessions_user_id_idx").on(table.userId),
+        index("sessions_expires_at_idx").on(table.expiresAt),
+    ],
+);

@@ -8,6 +8,13 @@
       "when": 1777075728669,
       "tag": "0000_ambiguous_cyclops",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777396007934,
+      "tag": "0001_workable_whirlwind",
+      "breakpoints": true
     }
   ]
 }
