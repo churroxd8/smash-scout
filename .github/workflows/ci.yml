@@ -30,6 +30,9 @@ jobs:
       - name: Run Typescript typecheck
         run: npm run typecheck
 
+      - name: Run tests
+        run: npm test
+
       - name: Build
         run: npm run build
         env:
