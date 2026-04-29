@@ -17,7 +17,7 @@ The core problem: serious Smash players have rich tournament data scattered acro
 ### Roadmap
 
 - [x] Week 1 - Project foundations (Typescript, Drizzle, CI/CD)
-- [ ] Week 2 - OAuth with start.gg
+- [x] Week 2 - OAuth with start.gg
 - [ ] Week 3 - start.gg client with rate limiting
 - [ ] Week 4 - Async ingestion worker (BullMQ + Redis)
 - [ ] Week 5 - Player Dossier dashboard
