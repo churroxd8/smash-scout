@@ -108,6 +108,7 @@ App runs at http://localhost:3000
 | `npm run db:generate` | Generate Drizzle migrations from schema |
 | `npm run db:migrate` | Apply migrations to the database |
 | `npm run db:seed:characters` | Seed character data from start.gg |
+| `rm -rf .next` | Si el typecheck/build da errores raros que no dan sentido, borramos caché |
 
 ## Project structure
 
