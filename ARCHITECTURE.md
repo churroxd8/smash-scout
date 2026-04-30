@@ -483,5 +483,7 @@ Esta sección es útil para entrevistas: cada punto es una decisión consciente 
 | Fecha | Cambio |
 |---|---|
 | Inicial | Documento base consolidado tras exploración. |
+| 2026-04-28 | OAuth flow implementado con Arctic + Auth.js. Tokens cifrados AES-256-GCM. Sesiones server-side con tabla `sessions` y SHA-256. Middleware de protección de rutas. |
+| 2026-04-29 | Cliente start.gg con TokenBucket (60 req/min). Backoff exponencial con jitter. Queries GraphQL tipadas como funciones reutilizables. Refactor del seed y OAuth callback para usar el cliente. |
 
 A actualizar durante la construcción cuando se tomen decisiones nuevas o se ajustan las existentes

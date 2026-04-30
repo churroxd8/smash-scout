@@ -6,74 +6,8 @@ import { encrypt } from "@/lib/auth/encryption";
 import { createSession } from "@/lib/auth/session";
 import { db } from "@/db";
 import { users, players } from "@/db/schema";
+import { createUserClient, getCurrentUser } from "@/lib/startgg";
 
-const STARTGG_API_URL = "https://api.start.gg/gql/alpha";
-
-/**
- * Fetches the current user's profile using the freshly issued access token.
- */
-async function fetchCurrentUser(accessToken: string) {
-    const query = `
-    query CurrentUser {
-      currentUser {
-        id
-        slug
-        name
-        genderPronoun
-        location {
-          country
-          state
-          city
-        }
-        player {
-          id
-          gamerTag
-          prefix
-        }
-      }
-    }
-  `;
-
-  const response = await fetch(STARTGG_API_URL, {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ query }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch current user: HTTP ${response.status}`);
-  }
-
-  const json = await response.json();
-
-  if (json.errors) {
-    throw new Error(`GraphQL errors: ${JSON.stringify(json.errors)}`);
-  }
-
-  if (!json.data?.currentUser) {
-    throw new Error("currentUser is null in response");
-  }
-
-  return json.data.currentUser as {
-    id: number;
-    slug: string;
-    name: string | null;
-    genderPronoun: string | null;
-    location: {
-        country: string | null;
-        state: string | null;
-        city: string | null;
-    } | null;
-    player: {
-        id: number;
-        gamerTag: string;
-        prefix: string | null;
-    } | null;
-  };
-}
 
 export async function GET(request: NextRequest) {
     const url = new URL(request.url);
@@ -102,8 +36,9 @@ export async function GET(request: NextRequest) {
         const refreshToken = tokens.refreshToken();
         const expiresAt = tokens.accessTokenExpiresAt();
 
-        // Step 2: Fetch user profile from start.gg
-        const startggUser = await fetchCurrentUser(accessToken);
+        // Step 2: Fetch user profile from start.gg using the rate-limited client
+        const userClient = createUserClient(accessToken);
+        const startggUser = await getCurrentUser(userClient);
 
         if (!startggUser.player) {
             return NextResponse.json(
