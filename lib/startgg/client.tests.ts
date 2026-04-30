@@ -116,14 +116,14 @@ describe("StartGGClient", () => {
     it("throws StartGGRateLimitError on 429", async () => {
       fetchMock.mockResolvedValue(mockResponse(429, { error: "rate_limit" }));
 
-      const client = new StartGGClient({ token: "test-token" });
+      const client = new StartGGClient({ token: "test-token", maxRetries: 0 });
       await expect(client.query({ query: "{ x }" })).rejects.toThrow(StartGGRateLimitError);
     });
 
     it("throws StartGGError on 500", async () => {
       fetchMock.mockResolvedValue(mockResponse(500, { error: "internal" }));
 
-      const client = new StartGGClient({ token: "test-token" });
+      const client = new StartGGClient({ token: "test-token", maxRetries: 0 });
       await expect(client.query({ query: "{ x }" })).rejects.toThrow(StartGGError);
     });
 
@@ -141,8 +141,133 @@ describe("StartGGClient", () => {
     it("throws StartGGError on network failure", async () => {
       fetchMock.mockRejectedValue(new Error("ECONNREFUSED"));
 
-      const client = new StartGGClient({ token: "test-token" });
+      const client = new StartGGClient({ token: "test-token", maxRetries: 0 });
       await expect(client.query({ query: "{ x }" })).rejects.toThrow(StartGGError);
+    });
+  });
+
+  describe("retry behavior", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("retries on 429 and eventually succeeds", async () => {
+      // First call: 429. Second call: success.
+      fetchMock
+        .mockResolvedValueOnce(mockResponse(429, { error: "rate_limit" }))
+        .mockResolvedValueOnce(mockResponse(200, { data: { ok: true } }));
+      
+      const client = new StartGGClient({
+        token: "test-token",
+        baseBackoffMs: 100,
+        maxBackoffMs: 1000,
+      });
+
+      const promise = client.query({ query: "{ x }"});
+
+      // Advance through the backoff sleep
+      await vi.advanceTimersByTimeAsync(2000);
+
+      const result = await promise;
+      expect(result).toEqual({ ok: true });
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("retries on 500 and eventually succeeds", async () => {
+      fetchMock
+        .mockResolvedValueOnce(mockResponse(500, { error: "internal" }))
+        .mockResolvedValueOnce(mockResponse(200, { data: { ok: true } }));
+
+      const client = new StartGGClient({
+        token: "test-token",
+        baseBackoffMs: 100,
+      });
+
+      const promise = client.query({ query: "{ x }" });
+      await vi.advanceTimersByTimeAsync(2000);
+
+      await promise;
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("retries on network error", async () => {
+      fetchMock
+        .mockRejectedValueOnce(new Error("ECONNREFUSED"))
+        .mockResolvedValueOnce(mockResponse(200, { data: { ok: true } }));
+
+      const client = new StartGGClient({
+        token: "test-token",
+        baseBackoffMs: 100,
+      });
+
+      const promise = client.query({ query: "{ x }" });
+      await vi.advanceTimersByTimeAsync(2000);
+
+      await promise;
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("retries on network error", async () => {
+      fetchMock
+        .mockRejectedValueOnce(new Error("ECONNREFUSED"))
+        .mockResolvedValueOnce(mockResponse(200, { data: { ok: true } }));
+
+      const client = new StartGGClient({
+        token: "test-token",
+        baseBackoffMs: 100,
+      });
+
+      const promise = client.query({ query: "{ x }"});
+      await vi.advanceTimersByTimeAsync(2000);
+
+      await promise;
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("does NOT retry on 401", async () => {
+      fetchMock.mockResolvedValue(mockResponse(401, { error: "unauthorized" }));
+
+      const client = new StartGGClient({ token: "test-token" });
+
+      await expect(client.query({ query: "{ x }"})).rejects.toThrow(StartGGAuthError);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("does NOT retry on GraphQL errors", async () => {
+      fetchMock.mockResolvedValue(
+        mockResponse(200, { errors: [{ message: "bad query" }] }),
+      );
+
+      const client = new StartGGClient({ token: "test-token" });
+
+      await expect(client.query({ query: "{ x }" })).rejects.toThrow(StartGGGraphQLError);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("gives up after maxRetries and throws StartGGError", async () => {
+      fetchMock.mockResolvedValue(mockResponse(500, { error: "internal" }));
+
+      const client = new StartGGClient({
+        token: "test-token",
+        maxRetries: 2,
+        baseBackoffMs: 100,
+        maxBackoffMs: 1000,
+      });
+
+      const promise = client.query({ query: "{ x }" });
+
+      // Attach the rejection handler BEFORE advancing timers so any async
+      // rejection during the retry loop is handled, not orphaned.
+      const expectation = expect(promise).rejects.toThrow(StartGGError);
+
+      await vi.advanceTimersByTimeAsync(10_000);
+      await expectation;
+
+      expect(fetchMock).toHaveBeenCalledTimes(3);
     });
   });
 });
